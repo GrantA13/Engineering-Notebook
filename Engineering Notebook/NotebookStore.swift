@@ -105,6 +105,13 @@ final class NotebookStore {
 
     // MARK: Helpers
 
+    /// Clears all cached data, e.g. when the user signs out.
+    func reset() {
+        projects = []
+        entriesByProject = [:]
+        errorMessage = nil
+    }
+
     private func report(_ error: Error) {
         errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }

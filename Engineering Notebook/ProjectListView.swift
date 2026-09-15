@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProjectListView: View {
     @Environment(NotebookStore.self) private var store
+    @Environment(SupabaseAuthClient.self) private var auth: SupabaseAuthClient?
     @State private var isPresentingNewProject = false
 
     var body: some View {
@@ -34,6 +35,23 @@ struct ProjectListView: View {
                         isPresentingNewProject = true
                     } label: {
                         Label("New Project", systemImage: "plus")
+                    }
+                }
+                if let auth {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Menu {
+                            if let email = auth.session?.userEmail {
+                                Text(email)
+                            }
+                            Button("Sign Out", role: .destructive) {
+                                Task {
+                                    await auth.signOut()
+                                    store.reset()
+                                }
+                            }
+                        } label: {
+                            Label("Account", systemImage: "person.circle")
+                        }
                     }
                 }
             }

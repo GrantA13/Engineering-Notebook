@@ -60,10 +60,19 @@ enum AppConfiguration {
     /// when running the bundled `MockServer`) to use the generic REST client.
     static let backendBaseURL: URL? = nil
 
+    /// Builds the auth client when Supabase is configured; `nil` otherwise
+    /// (the mock and generic REST backends don't use authentication).
+    static func makeSupabaseAuthClient() -> SupabaseAuthClient? {
+        guard let projectURL = supabaseProjectURL, !supabaseAnonKey.isEmpty else {
+            return nil
+        }
+        return SupabaseAuthClient(projectURL: projectURL, anonKey: supabaseAnonKey)
+    }
+
     /// Builds the backend service the app should use, based on the config above.
-    static func makeBackendService() -> BackendService {
+    static func makeBackendService(auth: SupabaseAuthClient? = nil) -> BackendService {
         if let projectURL = supabaseProjectURL, !supabaseAnonKey.isEmpty {
-            return SupabaseBackendService(projectURL: projectURL, anonKey: supabaseAnonKey)
+            return SupabaseBackendService(projectURL: projectURL, anonKey: supabaseAnonKey, auth: auth)
         } else if let baseURL = backendBaseURL {
             return RESTBackendService(baseURL: baseURL)
         } else {

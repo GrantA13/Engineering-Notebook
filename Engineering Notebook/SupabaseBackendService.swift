@@ -14,13 +14,26 @@ struct SupabaseBackendService: BackendService {
     let projectURL: URL
     /// The project's anon (public) API key.
     let anonKey: String
+    /// When set, requests are authorized with the signed-in user's access
+    /// token so row-level security applies per user.
+    let auth: SupabaseAuthClient?
 
     private let session: URLSession
 
-    init(projectURL: URL, anonKey: String, session: URLSession = .shared) {
+    init(projectURL: URL, anonKey: String, auth: SupabaseAuthClient? = nil, session: URLSession = .shared) {
         self.projectURL = projectURL
         self.anonKey = anonKey
+        self.auth = auth
         self.session = session
+    }
+
+    /// The bearer token for requests: the user's access token when signed in,
+    /// otherwise the anon key.
+    private func bearerToken() async throws -> String {
+        if let auth, let token = try await auth.validAccessToken() {
+            return token
+        }
+        return anonKey
     }
 
     // MARK: Projects
@@ -183,6 +196,7 @@ struct SupabaseBackendService: BackendService {
         table: String,
         query: [URLQueryItem],
         method: String,
+        token: String,
         body: Data? = nil,
         returnRepresentation: Bool = false
     ) throws -> URLRequest {
@@ -196,7 +210,7 @@ struct SupabaseBackendService: BackendService {
         var request = URLRequest(url: finalURL)
         request.httpMethod = method
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if body != nil {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -220,7 +234,7 @@ struct SupabaseBackendService: BackendService {
     }
 
     private func get<Row: Decodable>(table: String, query: [URLQueryItem]) async throws -> [Row] {
-        let request = try makeRequest(table: table, query: query, method: "GET")
+        let request = try makeRequest(table: table, query: query, method: "GET", token: await bearerToken())
         let (data, response) = try await session.data(for: request)
         try validate(response)
         do {
@@ -235,6 +249,7 @@ struct SupabaseBackendService: BackendService {
             table: table,
             query: [],
             method: "POST",
+            token: await bearerToken(),
             body: Self.encoder.encode(body),
             returnRepresentation: true
         )
@@ -251,7 +266,8 @@ struct SupabaseBackendService: BackendService {
         let request = try makeRequest(
             table: table,
             query: [URLQueryItem(name: "id", value: "eq.\(id.uuidString)")],
-            method: "DELETE"
+            method: "DELETE",
+            token: await bearerToken()
         )
         let (_, response) = try await session.data(for: request)
         try validate(response)
