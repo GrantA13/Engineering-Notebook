@@ -45,17 +45,27 @@ enum BackendError: LocalizedError {
 }
 
 /// Central place to configure which backend the app uses.
+///
+/// Priority order: Supabase (if both values below are filled in), then a
+/// custom REST server (if `backendBaseURL` is set), then the on-device mock.
 enum AppConfiguration {
+    // MARK: Supabase
+    /// Your Supabase project URL, from Project Settings → Data API,
+    /// e.g. `URL(string: "https://abcdefgh.supabase.co")`.
+    static let supabaseProjectURL: URL? = nil
+    /// Your Supabase anon (public) API key, from Project Settings → API Keys.
+    static let supabaseAnonKey = ""
+
+    // MARK: Custom REST server
     /// Set this to your deployed API's base URL (e.g. `http://localhost:3000`
-    /// when running the bundled `MockServer`) to use the real REST client.
-    ///
-    /// While `nil`, the app uses the on-device `MockBackendService` so it runs
-    /// fully offline with no server required.
+    /// when running the bundled `MockServer`) to use the generic REST client.
     static let backendBaseURL: URL? = nil
 
     /// Builds the backend service the app should use, based on the config above.
     static func makeBackendService() -> BackendService {
-        if let baseURL = backendBaseURL {
+        if let projectURL = supabaseProjectURL, !supabaseAnonKey.isEmpty {
+            return SupabaseBackendService(projectURL: projectURL, anonKey: supabaseAnonKey)
+        } else if let baseURL = backendBaseURL {
             return RESTBackendService(baseURL: baseURL)
         } else {
             return MockBackendService()
@@ -63,17 +73,21 @@ enum AppConfiguration {
     }
 }
 
-/// Shared JSON coders configured for the API contract (ISO-8601 dates).
+/// JSON coders configured for the API contract (ISO-8601 dates).
+///
+/// These are `nonisolated` computed properties that hand back a fresh coder on
+/// each access, so they're safe to use from any actor (e.g. `MockBackendService`)
+/// without sharing mutable state across concurrency domains.
 enum APICoders {
-    static let encoder: JSONEncoder = {
+    nonisolated static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
-    }()
+    }
 
-    static let decoder: JSONDecoder = {
+    nonisolated static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
-    }()
+    }
 }

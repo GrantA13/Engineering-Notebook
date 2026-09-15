@@ -8,12 +8,12 @@
 
 import Foundation
 import CoreLocation
+import MapKit
 
 @MainActor
 @Observable
 final class LocationProvider: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    private let geocoder = CLGeocoder()
 
     private(set) var authorizationStatus: CLAuthorizationStatus
 
@@ -54,11 +54,11 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
 
     /// Reverse geocodes a location into a short place description, if possible.
     func placeName(for location: CLLocation) async -> String? {
-        let placemarks = try? await geocoder.reverseGeocodeLocation(location)
-        guard let placemark = placemarks?.first else { return nil }
-        let parts = [placemark.name, placemark.locality, placemark.administrativeArea]
-            .compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: ", ")
+        guard let request = MKReverseGeocodingRequest(location: location),
+              let mapItems = try? await request.mapItems else {
+            return nil
+        }
+        return mapItems.first?.name
     }
 
     // MARK: CLLocationManagerDelegate
