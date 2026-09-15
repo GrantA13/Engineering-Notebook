@@ -52,12 +52,11 @@ enum AppConfiguration {
     // MARK: Supabase
     /// Your Supabase project URL, from Project Settings → Data API,
     /// e.g. `URL(string: "https://abcdefgh.supabase.co")`.
-    static let supabaseProjectURL: URL? = nil
+    static let supabaseProjectURL: URL? = URL(string: "https://vsucwzfbtvijymsqwfzo.supabase.co")
     /// Your Supabase anon (public) API key, from Project Settings → API Keys.
-    static let supabaseAnonKey = ""
+    static let supabaseAnonKey = "sb_publishable_tI_3CNFG3vJ6SiabiFQKFQ_opmUikgC"
 
     // MARK: Custom REST server
-    /// Set this to your deployed API's base URL (e.g. `http://localhost:3000`
     /// when running the bundled `MockServer`) to use the generic REST client.
     static let backendBaseURL: URL? = nil
 
