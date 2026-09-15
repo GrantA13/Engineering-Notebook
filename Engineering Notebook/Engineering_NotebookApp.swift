@@ -9,13 +9,20 @@ import SwiftUI
 
 @main
 struct Engineering_NotebookApp: App {
-    /// The app's data layer, backed by either the REST client or the mock,
-    /// depending on `AppConfiguration.backendBaseURL`.
-    @State private var store = NotebookStore(service: AppConfiguration.makeBackendService())
+    /// Auth client when Supabase is configured; `nil` for the mock/REST backends.
+    @State private var auth: SupabaseAuthClient?
+    /// The app's data layer, backed by whichever service `AppConfiguration` selects.
+    @State private var store: NotebookStore
+
+    init() {
+        let auth = AppConfiguration.makeSupabaseAuthClient()
+        _auth = State(initialValue: auth)
+        _store = State(initialValue: NotebookStore(service: AppConfiguration.makeBackendService(auth: auth)))
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(auth: auth)
                 .environment(store)
         }
     }
